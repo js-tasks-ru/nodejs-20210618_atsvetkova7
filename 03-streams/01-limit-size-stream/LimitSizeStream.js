@@ -16,6 +16,7 @@ class LimitSizeStream extends stream.Transform {
 
     if (this.sumByte > this.limit) {
       callback(new LimitExceededError());
+      return;
     }
 
     callback(null, chunk);
