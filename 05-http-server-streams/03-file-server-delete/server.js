@@ -15,11 +15,13 @@ server.on('request', (req, res) => {
       if (pathname.includes('/')) {
         res.statusCode = 400;
         res.end('Nested file is not supported');
+        return;
       }
 
       if (!fs.existsSync(filepath)) {
         res.statusCode = 404;
         res.end('File not found');
+        return;
       }
 
       fs.unlink(filepath, (err) => {
