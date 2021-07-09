@@ -6,7 +6,6 @@ const fs = require('fs');
 
 const server = new http.Server();
 
-const limitedStream = new LimitSizeStream({limit: 1048576, encoding: 'utf-8'});
 server.on('request', (req, res) => {
   const pathname = url.parse(req.url).pathname.slice(1);
 
@@ -14,6 +13,7 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'POST':
+      const limitedStream = new LimitSizeStream({limit: 1048576, encoding: 'utf-8'});
 
       if (pathname.includes('/')) {
         res.statusCode = 400;
@@ -21,46 +21,45 @@ server.on('request', (req, res) => {
         return;
       }
 
-      if (fs.existsSync(filepath)) {
-        res.statusCode = 409;
-        res.end('Duplicate file');
-        return;
-      }
-
-      const writeStream = fs.createWriteStream(filepath);
+      const writeStream = fs.createWriteStream(filepath, {flags: 'wx'});
 
       req
           .pipe(limitedStream)
-          .on('error', () => {
+          .on('error', (err) => {
+            res.statusCode = 413;
+            res.end('Really huge file :(');
             writeStream.destroy();
-            fs.unlink(filepath, (err) => {
-              if (err) {
-                res.statusCode = 500;
-                res.end('Something went wrong');
-                return;
-              }
-              res.statusCode = 413;
-              res.end('Really huge file :(');
-            });
+            if (err.code === 'LIMIT_EXCEEDED') {
+              fs.unlink(filepath, (err) => {
+                if (err) {
+                  res.statusCode = 500;
+                  res.end('Something went wrong');
+                  return;
+                }
+              });
+            }
           })
           .pipe(writeStream)
-          .on('error', () => {
-            res.statusCode = 500;
-            res.end('Something went wrong');
+          .on('error', (err) => {
+            if (err.code === 'EEXIST') {
+              res.statusCode = 409;
+              res.end('Duplicate file');
+              return;
+            } else {
+              res.statusCode = 500;
+              res.end('Something went wrong');
+            }
+          })
+          .on('finish', () => {
+            res.statusCode = 201;
+            res.end('ok');
           });
-
-      req.on('end', () => {
-        res.statusCode = 201;
-        res.end('ok');
-      });
 
       req.on('aborted', () => {
         writeStream.destroy();
         fs.unlink(filepath, (err) => {
           if (err) {
-            res.statusCode = 500;
-            res.end('Something went wrong');
-            return;
+            console.log('Unable to delete');
           }
         });
       });
