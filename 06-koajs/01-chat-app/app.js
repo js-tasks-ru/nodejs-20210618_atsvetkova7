@@ -8,7 +8,7 @@ app.use(require('koa-bodyparser')());
 const Router = require('koa-router');
 const router = new Router();
 
-const subscribes = [];
+let subscribes = [];
 
 router.get('/subscribe', async (ctx, next) => {
   await waitPublish(ctx);
@@ -22,6 +22,8 @@ router.post('/publish', async (ctx, next) => {
       sub.ctx.body = message;
       sub.resolve();
     });
+
+    subscribes = [];
 
     ctx.body = message;
     return;
