@@ -15,31 +15,21 @@ const toProductDTO = (model) => {
 
 module.exports.productsBySubcategory = async function productsBySubcategory(ctx, next) {
   const subcategoryId = ctx.query.subcategory;
-  if (mongoose.isValidObjectId(subcategoryId)) {
+  if (subcategoryId) {
     const productBySubcategory = await Product.find({subcategory: subcategoryId});
-    if (productBySubcategory.length) {
-      ctx.body = {
-        products: productBySubcategory.map(toProductDTO),
-      };
-    } else {
-      await next();
-    }
+    ctx.body = {
+      products: productBySubcategory.map(toProductDTO),
+    };
   } else {
-    ctx.throw(400, 'Invalid id.');
+    await next();
   }
 };
 
 module.exports.productList = async function productList(ctx, next) {
   const products = await Product.find();
-  if (products.length) {
-    ctx.body = {
-      products: products.map(toProductDTO),
-    };
-  } else {
-    ctx.body = {
-      products: [],
-    };
-  }
+  ctx.body = {
+    products: products.map(toProductDTO),
+  };
 };
 
 module.exports.productById = async function productById(ctx, next) {
